@@ -51,6 +51,9 @@ def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
+    # 清除旧会话
+    await app.bot.delete_webhook(drop_pending_updates=True)    
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_accounts))
     app.add_handler(CommandHandler("report", report))
