@@ -1,13 +1,6 @@
 import os
-import asyncio
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from utils import load_config, is_official_account
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -39,14 +32,17 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"❌ {q} 并非官方账号，请谨慎！")
 
-async def main():
-    print("PTB version:", getattr(__import__("telegram"), "__version__", "unknown"))
+def main():
+    from telegram import __version__ as ptb_version
+    print("PTB version:", ptb_version)
+
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_accounts))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    await app.run_polling()
+    
+    app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
