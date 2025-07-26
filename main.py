@@ -46,21 +46,21 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ {q} 并非官方账号，请谨慎！")
 
 # 启动 bot
-def main():
-    print("PTB version:", getattr(__import__("telegram"), "__version__", "unknown"))
-
+async def main():
+    print("✅ 启动验证机器人...")
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # 清除旧会话
-    await app.bot.delete_webhook(drop_pending_updates=True)    
+    # 清除 webhook 防止冲突
+    await app.bot.delete_webhook(drop_pending_updates=True)
 
+    # 添加处理器
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_accounts))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # 直接运行轮询（v21+ 推荐同步方式）
-    app.run_polling()
+    # 轮询启动
+    await app.run_polling()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
