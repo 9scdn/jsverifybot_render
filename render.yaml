@@ -1,2 +1,12 @@
-build:
-  pythonVersion: 3.11.9
+services:
+  - type: web
+    name: jsverifybot
+    env: python
+    plan: Starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py"
+    envVars:
+      - key: BOT_TOKEN
+        fromDatabase: true  # 代表从 Render 面板读取
+      - key: WEBHOOK_URL
+        fromDatabase: true
