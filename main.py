@@ -1,4 +1,6 @@
 import os
+import asyncio
+from aiohttp import web
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -7,16 +9,14 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from aiohttp import web
 from utils import load_config, is_official_account
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # e.g. https://your-app-name.onrender.com
-PORT = int(os.environ.get("PORT", 10000))
+WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # e.g. https://jsverifybot-apio.onrender.com
+PORT = int(os.environ.get("PORT", "10000"))
 
 config = load_config()
 
-# 命令处理函数
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🎉 欢迎使用 九色™️ 视频官方防伪验证机器人！\n\n"
@@ -44,28 +44,31 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"❌ {q} 并非官方账号，请谨慎！")
 
-# webhook 处理函数
 async def handle_webhook(request):
-    data = await request.json()
-    update = Update.de_json(data, app.bot)
-    await app.process_update(update)
+    try:
+        data = await request.json()
+        update = Update.de_json(data, app.bot)
+        await app.process_update(update)
+    except Exception as e:
+        print("❌ Error handling webhook:", e)
     return web.Response()
 
 async def main():
     global app
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # 注册 handler
+    # 注册指令
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_accounts))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # 设置 webhook
+    # 初始化并设置 webhook
+    await app.initialize()
     await app.bot.delete_webhook()
     await app.bot.set_webhook(url=WEBHOOK_URL)
 
-    # 启动 aiohttp Web 服务
+    # aiohttp server 启动
     web_app = web.Application()
     web_app.router.add_post("/", handle_webhook)
     runner = web.AppRunner(web_app)
@@ -73,12 +76,14 @@ async def main():
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
 
-    print(f"✅ Bot running via webhook at {WEBHOOK_URL}")
-    # 保持进程活跃
-    import asyncio
-    while True:
-        await asyncio.sleep(3600)
+    print(f"✅ 验证机器人已通过 Webhook 启动在 {WEBHOOK_URL}")
+
+    # 等待直到终止
+    await app.start()
+    await app.updater.start_polling()  # 不是必需，但用于防止更新丢失
+    await app.running.wait()
+    await app.stop()
+    await app.shutdown()
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
