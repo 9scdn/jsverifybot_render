@@ -26,7 +26,7 @@ app = None
 # /start 命令处理
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🎉 欢迎使用 九色™️ 官方防伪验证机器人！\n\n"
+        "🎉 欢迎使用 九色™官方防伪验证机器人！\n\n"
         "你可以通过以下方式快速操作：\n"
         "🔍 发送任何 @用户名 来验证其是否为官方账号\n"
         "🚨 使用 /report 命令举报假冒账号\n"
