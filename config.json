@@ -1,4 +1,12 @@
 {
-  "official_accounts": ["@zhaoyingjun", "@btfaka", "@jiusebot"],
-  "public_accounts": ["@jiuse9191", "@jiuseX", "@jiusebot"]
+  "official_accounts": [
+    "@zhaoyingjun",
+    "@btfaka",
+    "@jiusebot"
+  ],
+  "public_accounts": [
+    "九色官方群组 @jiuseX",
+    "九色官方频道 @jiuse9191",
+    "九色官方机器人 @jiusebot"
+  ]
 }
