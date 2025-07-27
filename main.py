@@ -8,9 +8,11 @@ from telegram.ext import (
     filters,
 )
 from utils import load_config, is_official_account
+from aiohttp import web
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # 你的公网 HTTPS 地址，如 https://your-service-name.onrender.com
+WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # eg. https://jiusebot.onrender.com
+PORT = int(os.environ.get("PORT", 8080))  # Render 会传递 PORT 环境变量
 
 config = load_config()
 
@@ -42,23 +44,32 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ {q} 并非官方账号，请谨慎！")
 
 async def main():
+    print("✅ 启动验证机器人（Webhook 模式）...")
+
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # 注册处理器
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_accounts))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # 清除旧 webhook
+    # 取消旧 webhook，设置新 webhook
     await app.bot.delete_webhook(drop_pending_updates=True)
+    await app.bot.set_webhook(url=WEBHOOK_URL)
 
-    # 设置新 webhook
-    await app.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 10000)),
-        webhook_url=WEBHOOK_URL,
-    )
+    # 创建 aiohttp 应用以处理 Webhook 请求
+    web_app = web.Application()
+    web_app.add_routes([web.post("/", app.webhook_handler())])
+
+    # aiohttp 监听 Render 提供的端口
+    runner = web.AppRunner(web_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+
+    print(f"✅ Webhook 设置完成，监听端口 {PORT}")
+    # 保持程序运行
+    await app.updater.start_polling()  # 如果你需要 fallback 保留，可以启用，否则用 `await asyncio.Event().wait()` 持续挂起
 
 if __name__ == "__main__":
     import asyncio
