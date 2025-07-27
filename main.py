@@ -95,9 +95,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text.startswith("@"):
         username = text.split()[0]
         if is_official_account(username):
-            await update.message.reply_text(f"✅ 账号 {username} 是官方认证账号。")
+            await update.message.reply_text(f"✅ 账号 {username} 是九色官方认证账号。")
         else:
-            await update.message.reply_text(f"⚠️ 账号 {username} 不是官方认证账号，请注意辨别。")
+            await update.message.reply_text(f"⚠️ 账号 {username} 不是九色官方认证账号，请注意辨别，谨防受骗！")
 
 
 # 错误处理器
