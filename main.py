@@ -1,7 +1,8 @@
+
 import os
 import asyncio
 from aiohttp import web
-from telegram import Update, BotCommand
+from telegram import Update, BotCommand, ReplyKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -18,28 +19,51 @@ CHANNEL_ID = int(os.environ["CHANNEL_ID"])
 
 config = load_config()
 
-# 指令处理
+# 命令处理函数
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [["/list", "/report @示例账号"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(
-        "🎉 欢迎使用 九色™视频官方账号防伪验证机器人！\n\n"
-        "您可以使用以下命令：\n"
-        "🔹 /list - 查看认证账号\n"
-        "🔹 /report @账号 - 举报假冒账号\n\n"
-        "或者直接发送 @账号 进行验证。"
+        "🎉 欢迎使用 九色™️ 官方防伪验证机器人！
+
+"
+        "请输入要验证的 @账号，我们会告诉你是否为官方认证账号。
+
+"
+        "📋 /list 查看所有官方账号
+"
+        "🚨 /report @账号 举报假冒账号
+",
+        reply_markup=reply_markup,
     )
 
 async def list_accounts(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = "📋 当前公开的官方账号如下：\n" + "\n".join(f"✅ {a}" for a in config["public_accounts"])
+    public = config["public_accounts"]
+    text = "📋 当前公开的官方账号如下：
+"
+    for acc in public:
+        label = "九色官方机器人" if acc == "@jiusebot" else                 "九色官方频道" if acc == "@jiuse9191" else                 "九色官方群组" if acc == "@jiuseX" else "✅ 官方账号"
+        text += f"{label} {acc}
+"
     await update.message.reply_text(text)
 
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
-        account = context.args[0]
-        await update.message.reply_text(f"✅ 已记录举报：{account}")
-        report_text = (
-            f"🚨 用户 @{update.effective_user.username or update.effective_user.id} 举报了账号：{account}"
+        target = context.args[0].strip()
+        if not target.startswith("@"):
+            await update.message.reply_text("⚠️ 请输入正确的账号，例如 /report @示例账号")
+            return
+
+        if is_official_account(target):
+            await update.message.reply_text(f"⚠️ 无需举报：{target} 是我们认证的官方账号。")
+            return
+
+        await update.message.reply_text(f"✅ 已记录举报：{target}")
+        await context.bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=f"📣 收到新举报：{target}
+👤 举报人：@{update.effective_user.username or update.effective_user.id}"
         )
-        await context.bot.send_message(chat_id=CHANNEL_ID, text=report_text)
     else:
         await update.message.reply_text("⚠️ 用法：/report @账号")
 
@@ -54,45 +78,36 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"❌ {q} 并非官方账号，请谨慎！")
 
-# 创建全局变量 app
-app = None
-
-# aiohttp webhook 路由处理
 async def handle_webhook(request):
-    try:
-        data = await request.json()
-        update = Update.de_json(data, app.bot)
-        await app.process_update(update)
-    except Exception as e:
-        print(f"❌ Webhook error: {e}")
+    data = await request.json()
+    update = Update.de_json(data, app.bot)
+    await app.process_update(update)
     return web.Response()
 
-# 主启动逻辑
 async def main():
     global app
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # 注册指令
+    # 注册命令菜单
+    await app.bot.set_my_commands([
+        BotCommand("start", "开始验证"),
+        BotCommand("list", "查看官方账号列表"),
+        BotCommand("report", "举报假冒账号"),
+    ])
+
+    # 注册处理器
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_accounts))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # 初始化和启动 bot
-    await app.initialize()
-    await app.bot.set_my_commands([
-        BotCommand("start", "开始验证"),
-        BotCommand("list", "查看官方账号"),
-        BotCommand("report", "举报假冒账号"),
-    ])
+    # 设置 Webhook
     await app.bot.delete_webhook()
     await app.bot.set_webhook(url=WEBHOOK_URL)
-    await app.start()
 
-    # aiohttp Web 服务
+    # 启动 AIOHTTP 服务
     web_app = web.Application()
     web_app.router.add_post("/", handle_webhook)
-
     runner = web.AppRunner(web_app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
