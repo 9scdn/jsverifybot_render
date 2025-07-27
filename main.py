@@ -21,7 +21,7 @@ config = load_config()
 # 指令处理
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🎉 欢迎使用 九色™️ 视频官方防伪验证机器人！\n\n"
+        "🎉 欢迎使用 九色™视频官方账号防伪验证机器人！\n\n"
         "您可以使用以下命令：\n"
         "🔹 /list - 查看认证账号\n"
         "🔹 /report @账号 - 举报假冒账号\n\n"
