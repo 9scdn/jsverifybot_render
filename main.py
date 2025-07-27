@@ -18,7 +18,7 @@ CHANNEL_ID = int(os.environ["CHANNEL_ID"])
 
 config = load_config()
 
-# 指令响应
+# 指令处理
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🎉 欢迎使用 九色™️ 视频官方防伪验证机器人！\n\n"
@@ -54,17 +54,31 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"❌ {q} 并非官方账号，请谨慎！")
 
-# 主函数
+# 创建全局变量 app
+app = None
+
+# aiohttp webhook 路由处理
+async def handle_webhook(request):
+    try:
+        data = await request.json()
+        update = Update.de_json(data, app.bot)
+        await app.process_update(update)
+    except Exception as e:
+        print(f"❌ Webhook error: {e}")
+    return web.Response()
+
+# 主启动逻辑
 async def main():
+    global app
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # 注册命令和消息处理器
+    # 注册指令
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_accounts))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # 初始化
+    # 初始化和启动 bot
     await app.initialize()
     await app.bot.set_my_commands([
         BotCommand("start", "开始验证"),
@@ -75,9 +89,9 @@ async def main():
     await app.bot.set_webhook(url=WEBHOOK_URL)
     await app.start()
 
-    # aiohttp 接收请求，使用 request_callback
+    # aiohttp Web 服务
     web_app = web.Application()
-    web_app.router.add_post("/", app.request_callback())  # ✅ 正确方式
+    web_app.router.add_post("/", handle_webhook)
 
     runner = web.AppRunner(web_app)
     await runner.setup()
@@ -86,7 +100,6 @@ async def main():
 
     print(f"✅ 验证机器人已通过 Webhook 启动在 {WEBHOOK_URL}")
 
-    # 保持运行
     while True:
         await asyncio.sleep(3600)
 
