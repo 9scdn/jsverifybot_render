@@ -1,116 +1,124 @@
 import os
+import json
 import logging
+import asyncio
+from aiohttp import web
 from telegram import Update, BotCommand
 from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
+    Application, CommandHandler, MessageHandler, ContextTypes, filters
 )
-from aiohttp import web
-from utils import load_config, is_official_account
+from utils import is_official_account
 
-# 环境变量
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-WEBHOOK_URL = os.environ["WEBHOOK_URL"]
-CHANNEL_ID = int(os.environ["CHANNEL_ID"])
-PORT = int(os.environ.get("PORT", 10000))
-
-# 加载配置
-config = load_config()
-
-# 日志
+# 日志配置
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# 命令处理器：start
+# 从环境变量获取配置
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # 例如 https://yourdomain.com
+PORT = int(os.getenv("PORT", 8080))
+CHANNEL_ID = int(os.getenv("CHANNEL_ID", "-1001891050093"))  # 频道 ID
+
+# 初始化 Application（稍后 initialize）
+app = None
+
+
+# /start 命令处理
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🎉 欢迎使用 九色™官方防伪验证机器人！\n\n"
-        "请发送你要验证的 @账号，例如 @jiusebot。\n\n"
-        "📋 快捷指令：\n"
-        "👉 /list - 查看官方账号\n"
-        "🚨 /report @账号 - 举报假冒账号"
+    welcome_text = (
+        "🎉 欢迎使用 九色™️ 官方防伪验证机器人！\n\n"
+        "你可以通过以下方式快速操作：\n"
+        "🔍 发送任何 @用户名 来验证其是否为官方账号\n"
+        "🚨 使用 /report 命令举报假冒账号\n\n"
+        "📢 快捷菜单：\n"
+        "✅ [验证机器人](https://t.me/JiuSeBot)\n"
+        "📣 [九色官方频道](https://t.me/jiuse9191)\n"
+        "💬 [九色官方群组](https://t.me/jiuseX)\n"
     )
+    await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
-# 命令处理器：list
-async def list_accounts(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = (
-        "📋 当前公开的官方账号如下：\n\n"
-        "✅ 九色官方群组 @jiuseX\n"
-        "✅ 九色官方频道 @jiuse9191\n"
-        "✅ 九色官方机器人 @jiusebot"
-    )
-    await update.message.reply_text(text)
 
-# 命令处理器：report
+# /report 命令处理
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("⚠️ 用法：/report @账号")
+        await update.message.reply_text("请使用格式：/report @username")
         return
 
-    reported_account = context.args[0].strip()
-    user = update.effective_user
-
-    if not reported_account.startswith("@"):
-        await update.message.reply_text("⚠️ 请输入以 @ 开头的账号，例如 /report @fakebot")
+    username = context.args[0].strip()
+    if not username.startswith("@"):
+        await update.message.reply_text("用户名必须以 @ 开头")
         return
 
-    if is_official_account(reported_account):
-        await update.message.reply_text("⚠️ 无需举报官方账号。")
+    # 防止举报官方账号
+    if is_official_account(username):
+        await update.message.reply_text("⚠️ 该账号为官方账号，不能举报。")
         return
 
-    msg = (
-        f"🚨 举报通知：\n\n"
-        f"举报人：@{user.username or user.first_name}\n"
-        f"被举报账号：{reported_account}"
+    # 构建举报消息
+    reporter = update.effective_user.mention_html()
+    message = (
+        f"🚨 <b>收到新举报</b>\n\n"
+        f"举报人: {reporter}\n"
+        f"被举报账号: <code>{username}</code>\n"
+        f"消息链接: <a href='https://t.me/{update.effective_user.username}'>用户主页</a>"
     )
 
-    await context.bot.send_message(chat_id=CHANNEL_ID, text=msg)
-    await update.message.reply_text(f"✅ 感谢举报，我们将尽快处理：{reported_account}")
+    # 发送到频道
+    await context.bot.send_message(
+        chat_id=CHANNEL_ID,
+        text=message,
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
 
-# 文本处理器
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.message.text.strip()
-    if not q.startswith("@"):
-        await update.message.reply_text("⚠️ 请输入 @ 开头的账号，例如 @JiuSeBot")
-        return
+    await update.message.reply_text("✅ 举报已提交，感谢你的反馈！")
 
-    if is_official_account(q):
-        await update.message.reply_text(f"✅ {q} 是我们认证的官方账号。")
-    else:
-        await update.message.reply_text(f"❌ {q} 并非官方账号，请谨慎！")
 
-# webhook handler
+# 普通消息处理
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    if text.startswith("@"):
+        username = text.split()[0]
+        if is_official_account(username):
+            await update.message.reply_text(f"✅ 账号 {username} 是官方认证账号。")
+        else:
+            await update.message.reply_text(f"⚠️ 账号 {username} 不是官方认证账号，请注意辨别。")
+
+
+# Webhook 请求处理
 async def handle_webhook(request):
-    data = await request.json()
-    update = Update.de_json(data, app.bot)
-    await app.process_update(update)
-    return web.Response()
+    try:
+        data = await request.json()
+        update = Update.de_json(data, app.bot)
+        await app.process_update(update)
+        return web.Response(status=200)
+    except Exception as e:
+        logger.exception("Webhook 错误")
+        return web.Response(status=500)
 
-# 主入口
+
+# 主程序
 async def main():
     global app
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # 设置菜单命令
+    # 命令处理器
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("report", report))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    # 设置机器人菜单命令
     await app.bot.set_my_commands([
-        BotCommand("start", "开始使用验证机器人"),
-        BotCommand("list", "查看官方账号"),
+        BotCommand("start", "开始验证"),
         BotCommand("report", "举报假冒账号")
     ])
 
-    # 添加 handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("list", list_accounts))
-    app.add_handler(CommandHandler("report", report))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    # 初始化并启动
+    await app.initialize()
+    await app.start()
+    await app.bot.set_webhook(WEBHOOK_URL)
 
-    # 设置 webhook
-    await app.bot.delete_webhook(drop_pending_updates=True)
-    await app.bot.set_webhook(url=WEBHOOK_URL)
-
-    # 启动 aiohttp web 服务
+    # aiohttp 服务器启动
     web_app = web.Application()
     web_app.router.add_post("/", handle_webhook)
     runner = web.AppRunner(web_app)
@@ -121,10 +129,8 @@ async def main():
     print(f"✅ 验证机器人已通过 Webhook 启动在 {WEBHOOK_URL}")
 
     # 保持运行
-    import asyncio
-    while True:
-        await asyncio.sleep(3600)
+    await asyncio.Event().wait()
+
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
