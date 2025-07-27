@@ -24,11 +24,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     await update.message.reply_text(
-        "🎉 欢迎使用 九色™️ 视频官方防伪验证机器人！\n\n"
-        "您可以通过以下命令快速验证账号：\n\n"
-        "✅ /list 查看官方账号\n"
-        "🚨 /report @假冒账号 进行举报",
-        reply_markup=reply_markup
+        "🎉 欢迎使用 九色™️ 官方防伪验证机器人！\n\n"
+        "输入对方的 @账号，我们会验证是否为官方账号。\n\n"
+        "⚡ 快捷指令：\n"
+        "/list - 查看官方账号列表\n"
+        "/report @xxx - 举报假冒账号"
     )
 
 
