@@ -29,7 +29,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎉 欢迎使用 九色™️ 官方防伪验证机器人！\n\n"
         "你可以通过以下方式快速操作：\n"
         "🔍 发送任何 @用户名 来验证其是否为官方账号\n"
-        "🚨 使用 /report 命令举报假冒账号\n\n"
+        "🚨 使用 /report 命令举报假冒账号\n"
+        "📋 使用 /list 查看官方账号列表\n\n"
         "📢 快捷菜单：\n"
         "✅ [验证机器人](https://t.me/JiuSeBot)\n"
         "📣 [九色官方频道](https://t.me/jiuse9191)\n"
@@ -74,6 +75,17 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ 举报已提交，感谢你的反馈！")
 
 
+# /list 命令处理
+async def list_accounts(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "📋 当前公开的官方账号如下：\n\n"
+        "✅ 九色官方群组：@jiuseX\n"
+        "✅ 九色官方频道：@jiuse9191\n"
+        "✅ 九色官方机器人：@jiusebot"
+    )
+    await update.message.reply_text(text)
+
+
 # 普通消息处理
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
@@ -105,12 +117,14 @@ async def main():
     # 命令处理器
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("report", report))
+    app.add_handler(CommandHandler("list", list_accounts))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     # 设置机器人菜单命令
     await app.bot.set_my_commands([
         BotCommand("start", "开始验证"),
-        BotCommand("report", "举报假冒账号")
+        BotCommand("report", "举报假冒账号"),
+        BotCommand("list", "查看官方账号列表")
     ])
 
     # 初始化并启动
