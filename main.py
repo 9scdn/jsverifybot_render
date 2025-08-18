@@ -62,7 +62,7 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🚨 <b>收到新举报</b>\n\n"
         f"举报人: {reporter}\n"
         f"被举报账号: <code>{username}</code>\n"
-        f"消息链接: <a href='https://t.me/{update.effective_user.username}'>用户主页</a>"
+        f"消息链接: <a href='https://t.me/jiuse9191/{update.effective_message.message_id}'>点击查看</a>"
     )
 
     await context.bot.send_message(
