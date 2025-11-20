@@ -105,22 +105,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 1. 验证 @用户名
     if text.startswith("@"):
         username = text
+        username_code = f"<code>{username}</code>" 
+        
         if is_official_account(username):
-            await update.message.reply_text(f"✅ 账号 {username} 是九色官方认证账号。")
+            await update.message.reply_text(
+                f"✅ 账号 {username_code} 是九色官方认证账号。", 
+                parse_mode="HTML" # ✅ 确保这里有 HTML
+            )
         else:
-            await update.message.reply_text(f"⚠️ 账号 {username} 不是九色官方认证账号，请注意辨别，谨防受骗！")
+            await update.message.reply_text(
+                f"⚠️ 账号 {username_code} 不是九色官方认证账号，请注意辨别，谨防受骗！",
+                parse_mode="HTML" # ✅ 确保这里有 HTML
+            )
     
     # 2. 验证邮箱
     elif re.match(EMAIL_REGEX, text, re.IGNORECASE):
         email = text
         if is_official_email(email):
-            await update.message.reply_text(f"✅ 邮箱地址 <code>{email}</code> 是九色官方邮箱。")
+            await update.message.reply_text(
+                f"✅ 邮箱地址 <code>{email}</code> 是九色官方邮箱。",
+                parse_mode="HTML" # <--- 【确保添加了这一行！】
+            )
         else:
-            await update.message.reply_text(f"⚠️ 邮箱地址 <code>{email}</code> 不是九色官方邮箱，请注意辨别，谨防受骗！")
+            await update.message.reply_text(
+                f"⚠️ 邮箱地址 <code>{email}</code> 不是九色官方邮箱，请注意辨别，谨防受骗！",
+                parse_mode="HTML" # <--- 【确保添加了这一行！】
+            )
     
-    # 3. 既不是用户名也不是邮箱 (可选：可以不回复，或给一个提示)
-    # else:
-    #     await update.message.reply_text("请发送 `@用户名` 或 `邮箱地址` 进行验证。")
+    # 3. 既不是用户名也不是邮箱 (激活此部分)
+    else: # <--- 移除 #，激活 else 块
+        await update.message.reply_text("🤔 无法识别您的输入。请发送 `@用户名` 或 `邮箱地址` 进行验证。")
 
 
 # 错误处理器 (保持不变)
