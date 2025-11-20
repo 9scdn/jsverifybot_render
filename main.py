@@ -88,9 +88,9 @@ async def list_accounts(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✅ 九色官方频道：@jiuse9191\n"
         "✅ 九色官方机器人：@jiusebot\n\n"
         "**官方邮箱**:\n"
-        "📧 official@jiuse.com\n"
-        "📧 support@jiuse.com\n"
-        "📧 admin@jiuse.com"
+        "📧 bd@91porny.com\n"
+        "📧 91porny@gmail.com\n"
+        "📧 91jiuse@gmail.com"
     )
     await update.message.reply_text(text)
 
