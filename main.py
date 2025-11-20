@@ -2,12 +2,13 @@ import os
 import json
 import logging
 import asyncio
+import re # 导入 re 模块用于正则表达式匹配邮箱
 from aiohttp import web
 from telegram import Update, BotCommand
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, ContextTypes, filters
 )
-from utils import is_official_account
+from utils import is_official_account, is_official_email # 导入新的函数
 
 # 日志配置
 logging.basicConfig(level=logging.INFO)
@@ -25,13 +26,15 @@ CHANNEL_ID = int(channel_id_str)
 # 初始化 Application（稍后 initialize）
 app = None
 
+# 正则表达式用于匹配一个简单的邮箱地址
+EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
 # /start 命令处理
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "🎉 欢迎使用 九色™官方防伪验证机器人！\n\n"
         "你可以通过以下方式快速操作：\n"
-        "🔍 发送任何 @用户名 来验证其是否为官方账号\n"
+        "🔍 发送任何 **@用户名** 或 **邮箱地址** 来验证其是否为官方账号/邮箱\n" # 更新了提示
         "🚨 使用 /report 命令举报假冒账号\n"
         "📋 使用 /list 查看官方账号列表\n\n"
         "📢 快捷菜单：\n"
@@ -42,7 +45,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
 
-# /report 命令处理
+# /report 命令处理 (保持不变)
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("请使用格式：/report @username")
@@ -53,6 +56,7 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("用户名必须以 @ 开头")
         return
 
+    # 这里只允许举报非官方账号，邮箱不适用，保持不变
     if is_official_account(username):
         await update.message.reply_text("⚠️ 该账号为官方账号，不能举报。")
         return
@@ -75,37 +79,56 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ 举报已提交，感谢你的反馈！")
 
 
-# /list 命令处理
+# /list 命令处理 (需要更新以包含官方邮箱列表)
 async def list_accounts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
-        "📋 当前公开的官方账号如下：\n\n"
+        "📋 当前公开的官方账号和邮箱如下：\n\n"
+        "**官方账号**:\n"
         "✅ 九色官方群组：@jiuseX\n"
         "✅ 九色官方频道：@jiuse9191\n"
-        "✅ 九色官方机器人：@jiusebot"
+        "✅ 九色官方机器人：@jiusebot\n\n"
+        "**官方邮箱**:\n"
+        "📧 official@jiuse.com\n"
+        "📧 support@jiuse.com\n"
+        "📧 admin@jiuse.com"
     )
     await update.message.reply_text(text)
 
 
-# 普通消息处理
+# 普通消息处理 (更新以处理邮箱验证)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
 
-    text = update.message.text.strip()
+    text = update.message.text.strip().split()[0] # 只取第一个词/条目
+
+    # 1. 验证 @用户名
     if text.startswith("@"):
-        username = text.split()[0]
+        username = text
         if is_official_account(username):
             await update.message.reply_text(f"✅ 账号 {username} 是九色官方认证账号。")
         else:
             await update.message.reply_text(f"⚠️ 账号 {username} 不是九色官方认证账号，请注意辨别，谨防受骗！")
+    
+    # 2. 验证邮箱
+    elif re.match(EMAIL_REGEX, text, re.IGNORECASE):
+        email = text
+        if is_official_email(email):
+            await update.message.reply_text(f"✅ 邮箱地址 <code>{email}</code> 是九色官方邮箱。")
+        else:
+            await update.message.reply_text(f"⚠️ 邮箱地址 <code>{email}</code> 不是九色官方邮箱，请注意辨别，谨防受骗！")
+    
+    # 3. 既不是用户名也不是邮箱 (可选：可以不回复，或给一个提示)
+    # else:
+    #     await update.message.reply_text("请发送 `@用户名` 或 `邮箱地址` 进行验证。")
 
 
-# 错误处理器
+# 错误处理器 (保持不变)
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.error("发生错误：%s", context.error)
 
 
-# Webhook 请求处理
+# Webhook 请求处理 (保持不变)
 async def handle_webhook(request):
     try:
         data = await request.json()
@@ -117,7 +140,7 @@ async def handle_webhook(request):
         return web.Response(status=500)
 
 
-# 主程序
+# 主程序 (保持不变)
 async def main():
     global app
     app = Application.builder().token(BOT_TOKEN).build()
